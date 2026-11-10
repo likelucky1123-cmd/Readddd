@@ -63,7 +63,7 @@
     <!-- ==========================================
          身分驗證區塊
          ========================================== -->
-    <div id="auth-container" class="min-h-screen flex items-center justify-center p-4 bg-custom-purple-50 z-50">
+    <div id="auth-container" class="min-h-screen items-center justify-center p-4 bg-custom-purple-50 z-50" style="display:none;">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden border border-custom-purple-100">
             <div id="login-section" class="transition-all duration-300 transform translate-x-0">
                 <div class="text-center mb-8">
@@ -501,7 +501,7 @@
          ========================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, inMemoryPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, onSnapshot, addDoc, deleteDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -681,20 +681,25 @@
         // 認證
         const authCont = document.getElementById('auth-container'), appCont = document.getElementById('app-container');
         const loginErr = document.getElementById('login-error'), regErr = document.getElementById('reg-error');
+        // 每次重新整理網頁都要求重新登入；登入狀態只保留在目前頁面工作階段。
+        // 先等待 Firebase 設定完成，再監聽登入狀態，避免登入頁閃現後又消失。
+        await setPersistence(auth, inMemoryPersistence);
         onAuthStateChanged(auth, async (user) => {
             // Always stop previous listeners before switching account/session.
             [window.app.unsubNovels, window.app.unsubChapters, window.app.unsubProfile].forEach(unsub => { if (typeof unsub === 'function') unsub(); });
             window.app.unsubNovels = window.app.unsubChapters = window.app.unsubProfile = null;
             if (user) {
                 window.app.currentUser = user;
-                authCont.classList.add('hidden'); appCont.classList.remove('hidden');
+                authCont.style.display = 'none';
+                appCont.classList.remove('hidden');
                 initDataListeners(user.uid);
                 window.app.switchView('categories');
             } else {
                 window.app.currentUser = null;
                 window.app.novels = []; window.app.chapters = [];
                 window.app.profile = { nickname: '', avatar: null, dashboardBg: null, categories: ['未分類'] };
-                appCont.classList.add('hidden'); authCont.classList.remove('hidden');
+                appCont.classList.add('hidden');
+                authCont.style.display = 'flex';
             }
         });
         const switchLogin = (e) => { e.preventDefault(); document.getElementById('register-section').classList.add('hidden', 'translate-x-full'); document.getElementById('register-section').classList.remove('translate-x-0'); document.getElementById('login-section').classList.remove('hidden', '-translate-x-full'); document.getElementById('login-section').classList.add('translate-x-0'); };
@@ -756,8 +761,8 @@
                         <button data-cat="${escapeHTML(cat)}" onclick="window.app.deleteCategory(event, this.getAttribute('data-cat'))" class="w-10 h-10 bg-red-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition-colors shadow"><i class="fa-solid fa-trash"></i></button>
                     </div>
                     <div class="swipe-content bg-white p-4 rounded-xl border border-custom-purple-100 cursor-pointer flex flex-col items-center justify-center gap-2 w-full h-full" onclick="window.app.openLibrary('category', '${escapeHTML(cat)}')">
-                        <div class="w-14 h-14 bg-custom-purple-50 rounded-full flex items-center justify-center text-custom-purple-400 group-hover:bg-custom-purple-100 group-hover:text-custom-purple-600 transition-colors">
-                            <i class="fa-solid fa-folder-open text-2xl"></i>
+                        <div class="w-12 h-12 bg-custom-purple-50 rounded-full flex items-center justify-center text-custom-purple-400 group-hover:bg-custom-purple-100 group-hover:text-custom-purple-600 transition-colors">
+                            <i class="fa-solid fa-folder-open text-xl"></i>
                         </div>
                         <div class="text-center w-full px-1">
                             <h3 class="font-bold text-custom-purple-900 text-sm md:text-base mb-1 line-clamp-2">${escapeHTML(cat)}</h3>
